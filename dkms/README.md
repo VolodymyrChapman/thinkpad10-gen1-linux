@@ -14,6 +14,9 @@ upstream):
   by PipeWire and Firefox).
 - **ipu-bridge**: add the IMX175 (`INTCF1A`).
 - **imx175**: new driver for the Sony IMX175 rear sensor.
+- **leds-lm3554**: new driver for the LM3554 rear flash LED, plus
+  `led-class-flash` (the LED flash class), which the Kali 7.2 kernel does
+  not build.
 
 `BUILD_EXCLUSIVE_KERNEL` limits it to 7.2.x kernels. Newer kernels need a
 rebuilt package (or, once merged, nothing).
@@ -29,6 +32,7 @@ sudo reboot
 `install.sh` copies the source to `/usr/src/atomisp-tp10-<version>`, builds
 and installs it, and blacklists `intel_atomisp2_pm` (a power-off-only driver
 which would otherwise claim the ISP). After the reboot,
-`v4l2-ctl -d /dev/video0 --list-inputs` should list `ov2722` and `imx175`.
+`v4l2-ctl -d /dev/video0 --list-inputs` should list `ov2722` and `imx175`,
+and `/sys/class/leds/white:flash` should exist.
 
 Remove with `sudo sh install.sh --remove`.

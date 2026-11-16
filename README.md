@@ -22,12 +22,12 @@ below.
 | Suspend (s2idle) | Works, also with the cameras loaded |
 | **Front camera** (OV2722) | **Works** with this repo |
 | **Rear camera** (IMX175) | **Works** with this repo (needs the new IMX175 driver, included) |
-| Rear flash / white LED (LM3554) | Driver written and sent upstream, not packaged here yet |
+| **Rear flash / white LED** (LM3554) | **Works** with this repo (new driver, included): torch and flash |
 
 ## Camera setup
 
 The cameras use Intel's Atom ISP (`atomisp`, in the kernel's staging area).
-Getting them working takes five steps. Steps 1 and 2 are needed once.
+Getting them working takes the steps below. Steps 1 and 2 are needed once.
 
 ### 1. Switch the ISP to PCI mode in the firmware
 
@@ -60,7 +60,20 @@ apart). Browsers must handle that:
   repository and enables its PipeWire camera support.
 - GStreamer-based apps (e.g. Cheese, Snapshot) handle padded rows.
 
-### 5. Switch between the front and rear camera
+### 5. Rear flash LED (torch)
+
+The DKMS package also contains a new driver for the LM3554 flash chip, which
+loads by itself and shows the white LED as `/sys/class/leds/white:flash`:
+
+```sh
+echo 1 | sudo tee /sys/class/leds/white:flash/brightness   # torch on (levels 1-8)
+echo 0 | sudo tee /sys/class/leds/white:flash/brightness   # off
+```
+
+Flash (`flash_brightness`, `flash_timeout`, `flash_strobe`) is available
+too; camera apps can't trigger it yet.
+
+### 6. Switch between the front and rear camera
 
 Apps see one camera, "ATOM ISP". Which sensor it shows is chosen with
 [`camera-switch/`](camera-switch/): a **Switch Camera** menu entry and
@@ -85,7 +98,6 @@ once merged, step 3 and the 1 fps workaround won't be needed on new kernels:
 | atomisp: frame sizes and frame intervals for PipeWire / Firefox | [sent to linux-media](https://lore.kernel.org/linux-media/20261116175750.21905-1-volodymyrchapman@gmail.com/T/) |
 | LM3554 flash LED driver (rear white LED) | [sent to linux-leds](https://lore.kernel.org/linux-leds/20261116180809.26946-1-volodymyrchapman@gmail.com/) |
 
-The LM3554 driver isn't in the DKMS package here yet.
 
 Userspace issues found along the way: Firefox ESR 153 requires unpadded
 camera buffers (fixed in Firefox 160), and libwebrtc takes the *minimum* of
