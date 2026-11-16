@@ -428,12 +428,18 @@ static int imx175_disable_streams(struct v4l2_subdev *sd,
 
 	ret = cci_write(imx175->regmap, IMX175_REG_MODE_SELECT,
 			IMX175_MODE_STANDBY, NULL);
+	if (ret)
+		dev_err(imx175->dev, "failed to stop streaming: %d\n", ret);
 
 	__v4l2_ctrl_grab(imx175->hflip, false);
 	__v4l2_ctrl_grab(imx175->vflip, false);
 
+	/*
+	 * Powering the sensor down stops streaming even if the write above
+	 * failed, so report success to keep the stream state consistent.
+	 */
 	pm_runtime_put(imx175->dev);
-	return ret;
+	return 0;
 }
 
 static int imx175_set_format(struct v4l2_subdev *sd,

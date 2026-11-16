@@ -22,6 +22,7 @@ below.
 | Suspend (s2idle) | Works, also with the cameras loaded |
 | **Front camera** (OV2722) | **Works** with this repo |
 | **Rear camera** (IMX175) | **Works** with this repo (needs the new IMX175 driver, included) |
+| Rear camera focus (DW9714 VCM) | **Works** with this repo: manual focus control, no autofocus |
 | **Rear flash / white LED** (LM3554) | **Works** with this repo (new driver, included): torch and flash |
 
 ## Camera setup
@@ -73,7 +74,22 @@ echo 0 | sudo tee /sys/class/leds/white:flash/brightness   # off
 Flash (`flash_brightness`, `flash_timeout`, `flash_strobe`) is available
 too; camera apps can't trigger it yet.
 
-### 6. Switch between the front and rear camera
+### 6. Rear camera focus
+
+The rear camera's lens is moved by a DW9714 voice coil motor. With the DKMS
+package it appears as its own device with a focus control (0 = far,
+roughly 100-300 = close-up); it only takes effect while the rear camera is
+streaming:
+
+```sh
+v4l2-ctl -d /dev/v4l-subdev6 -c focus_absolute=150
+```
+
+The device number can differ; `v4l2-ctl --list-devices` or the names in
+`/sys/class/video4linux/*/name` show which one is `dw9714`. There is no
+autofocus: apps would have to set the focus themselves.
+
+### 7. Switch between the front and rear camera
 
 Apps see one camera, "ATOM ISP". Which sensor it shows is chosen with
 [`camera-switch/`](camera-switch/): a **Switch Camera** menu entry and

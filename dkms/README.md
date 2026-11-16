@@ -17,6 +17,11 @@ upstream):
 - **leds-lm3554**: new driver for the LM3554 rear flash LED, plus
   `led-class-flash` (the LED flash class), which the Kali 7.2 kernel does
   not build.
+- **imx175**: keep the stream state consistent if stopping the sensor
+  fails (otherwise the rear camera cannot be restarted until a reboot).
+- **atomisp**: use a DW9714 VCM for the IMX175 (the firmware does not name
+  the type), plus the `dw9714` driver, which the Kali 7.2 kernel does not
+  build. This gives the rear camera a focus control.
 
 `BUILD_EXCLUSIVE_KERNEL` limits it to 7.2.x kernels. Newer kernels need a
 rebuilt package (or, once merged, nothing).

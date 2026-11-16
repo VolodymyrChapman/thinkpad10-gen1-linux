@@ -45,6 +45,8 @@ static const guid_t vcm_dsm_guid =
 struct atomisp_sensor_config {
 	int lanes;
 	bool vcm;
+	/* VCM type to use if the firmware does not give one */
+	const char *vcm_type;
 };
 
 #define ATOMISP_SENSOR_CONFIG(_HID, _LANES, _VCM)			\
@@ -53,6 +55,16 @@ struct atomisp_sensor_config {
 	.driver_data = (long)&((const struct atomisp_sensor_config) {	\
 		.lanes = _LANES,					\
 		.vcm = _VCM,						\
+	})								\
+}
+
+#define ATOMISP_SENSOR_CONFIG_VCM(_HID, _LANES, _VCM_TYPE)		\
+{									\
+	.id = _HID,							\
+	.driver_data = (long)&((const struct atomisp_sensor_config) {	\
+		.lanes = _LANES,					\
+		.vcm = true,						\
+		.vcm_type = _VCM_TYPE,					\
 	})								\
 }
 
@@ -371,13 +383,19 @@ static const struct acpi_device_id atomisp_sensor_configs[] = {
 	 * an i2c-client for the VCM, so it is disabled for now.
 	 */
 	ATOMISP_SENSOR_CONFIG("INT33BE", 2, false),	/* OV5693 */
-	ATOMISP_SENSOR_CONFIG("INTCF1A", 4, false),	/* IMX175 */
+	/*
+	 * The VCM type _DSM of the IMX175 on the Lenovo ThinkPad 10 (20C1/20C3)
+	 * returns 0, but its _CRS lists the VCM at I2C address 0x0c and the
+	 * removed atomisp imx driver used a DW9714 for this module.
+	 */
+	ATOMISP_SENSOR_CONFIG_VCM("INTCF1A", 4, "dw9714"),	/* IMX175 */
 	{}
 };
 
 static int atomisp_csi2_parse_sensor_fwnode(struct acpi_device *adev,
 					    struct ipu_sensor *sensor)
 {
+	const char *default_vcm_type = NULL;
 	const struct acpi_device_id *id;
 	int ret, clock_num;
 	bool vcm = false;
@@ -390,6 +408,7 @@ static int atomisp_csi2_parse_sensor_fwnode(struct acpi_device *adev,
 
 		lanes = cfg->lanes;
 		vcm = cfg->vcm;
+		default_vcm_type = cfg->vcm_type;
 	}
 
 	/*
@@ -427,8 +446,11 @@ static int atomisp_csi2_parse_sensor_fwnode(struct acpi_device *adev,
 	sensor->orientation = (sensor->link == 1) ?
 		V4L2_FWNODE_ORIENTATION_BACK : V4L2_FWNODE_ORIENTATION_FRONT;
 
-	if (vcm)
+	if (vcm) {
 		sensor->vcm_type = atomisp_csi2_get_vcm_type(adev);
+		if (!sensor->vcm_type)
+			sensor->vcm_type = default_vcm_type;
+	}
 
 	return 0;
 }
