@@ -22,7 +22,7 @@ below.
 | Suspend (s2idle) | Works, also with the cameras loaded |
 | **Front camera** (OV2722) | **Works** with this repo |
 | **Rear camera** (IMX175) | **Works** with this repo (needs the new IMX175 driver, included) |
-| Rear flash / white LED (LM3554) | Not working yet: no Linux driver |
+| Rear flash / white LED (LM3554) | Driver written and sent upstream, not packaged here yet |
 
 ## Camera setup
 
@@ -74,16 +74,18 @@ doesn't do yet.
 
 ## Upstream status
 
-The kernel changes are being submitted upstream (linux-media); once merged,
-steps 3 and parts of 4 won't be needed on new kernels:
+The kernel changes were sent upstream on 2026-11-16 and are under review;
+once merged, step 3 and the 1 fps workaround won't be needed on new kernels:
 
-- `media: atomisp: ov2722: Report SGRBG10 consistently` (colour fix)
-- `media: atomisp: csi2-bridge: Don't cycle the PMC clock if its rate is
-  correct` (rear camera failing to probe on some boots)
-- `media: i2c: Add driver for Sony IMX175` + ipu-bridge and atomisp entries
-- `media: atomisp: Don't enumerate frame sizes the preview pipe can't
-  output` and `... Report frame interval for sensors without
-  enum_frame_interval` (PipeWire / Firefox streaming)
+| Change | Status |
+|---|---|
+| ov2722: Report SGRBG10 consistently (front camera colours) | [sent to linux-media](https://lore.kernel.org/linux-media/20261116173143.13584-1-volodymyrchapman@gmail.com/) |
+| csi2-bridge: Don't cycle the PMC clock if its rate is correct (rear camera failing to probe on some boots) | [sent to linux-media](https://lore.kernel.org/linux-media/20261116173307.14169-1-volodymyrchapman@gmail.com/) |
+| Sony IMX175 sensor driver, plus ipu-bridge and atomisp entries | [sent to linux-media](https://lore.kernel.org/linux-media/20261116175151.20150-1-volodymyrchapman@gmail.com/T/) |
+| atomisp: frame sizes and frame intervals for PipeWire / Firefox | [sent to linux-media](https://lore.kernel.org/linux-media/20261116175750.21905-1-volodymyrchapman@gmail.com/T/) |
+| LM3554 flash LED driver (rear white LED) | [sent to linux-leds](https://lore.kernel.org/linux-leds/20261116180809.26946-1-volodymyrchapman@gmail.com/) |
+
+The LM3554 driver isn't in the DKMS package here yet.
 
 Userspace issues found along the way: Firefox ESR 153 requires unpadded
 camera buffers (fixed in Firefox 160), and libwebrtc takes the *minimum* of
