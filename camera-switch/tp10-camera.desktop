@@ -1,0 +1,19 @@
+[Desktop Entry]
+Type=Application
+Name=Switch Camera
+GenericName=Front/rear camera
+Comment=Switch between the front and rear camera
+Icon=camera-web
+Exec=tp10-camera toggle
+Terminal=false
+Categories=AudioVideo;Video;
+Keywords=camera;webcam;front;rear;switch;
+Actions=front;rear;
+
+[Desktop Action front]
+Name=Use Front Camera
+Exec=tp10-camera front
+
+[Desktop Action rear]
+Name=Use Rear Camera
+Exec=tp10-camera rear

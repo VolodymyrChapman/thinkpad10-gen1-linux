@@ -1,0 +1,107 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Switch the Lenovo ThinkPad 10 (1st gen, 20C1/20C3) camera between the
+# front (OV2722) and rear (IMX175) sensor.
+#
+#   tp10-camera front | rear | toggle | status
+#
+# Both sensors sit behind the one atomisp video node as V4L2 inputs 0 and 1,
+# so applications see a single camera ("ATOM ISP"). The selected input is
+# global to the device, but PipeWire only reads the camera's sizes when
+# WirePlumber creates the camera node, so WirePlumber is restarted after
+# switching. Close applications using the camera first.
+#
+# When not run from a terminal (e.g. from the menu or panel), progress and
+# errors are shown as desktop notifications.
+set -u
+
+ICON=camera-web
+
+# Find the atomisp video node rather than assuming /dev/video0.
+find_dev() {
+	for n in /sys/class/video4linux/video*; do
+		[ -e "$n/name" ] || continue
+		case "$(cat "$n/name")" in
+		*ATOMISP*|*"ATOM ISP"*) echo "/dev/$(basename "$n")"; return 0 ;;
+		esac
+	done
+	return 1
+}
+
+ui_tty() { [ -t 1 ]; }
+
+# notify ID-or-empty SUMMARY [BODY]; prints the notification id
+notify() {
+	id=$1; shift
+	if ui_tty || ! command -v notify-send >/dev/null 2>&1; then
+		echo "$*" >&2
+		return 0
+	fi
+	if [ -n "$id" ]; then
+		notify-send -a "Camera" -i "$ICON" -p -r "$id" "$@" 2>/dev/null
+	else
+		notify-send -a "Camera" -i "$ICON" -p "$@" 2>/dev/null
+	fi
+}
+
+current() { # prints front|rear
+	v4l2-ctl -d "$DEV" -I 2>/dev/null |
+		sed -n 's/^Video input *: *\([0-9]*\).*/\1/p' |
+		awk '{ print ($1 == 1) ? "rear" : "front" }'
+}
+
+DEV=$(find_dev) || { notify "" "No camera found" "The atomisp camera driver is not loaded."; exit 1; }
+
+want=${1:-status}
+case "$want" in
+status)
+	echo "$(current)"
+	exit 0 ;;
+toggle)
+	[ "$(current)" = rear ] && want=front || want=rear ;;
+front|rear) ;;
+*)
+	echo "usage: $(basename "$0") front|rear|toggle|status" >&2
+	exit 2 ;;
+esac
+
+if [ "$(current)" = "$want" ]; then
+	notify "" "Using the $want camera" "It was already selected." >/dev/null
+	exit 0
+fi
+
+if fuser -s "$DEV" 2>/dev/null; then
+	# PipeWire keeps no file descriptor open while idle, so this is a
+	# real user of the camera.
+	users=$(fuser "$DEV" 2>/dev/null | xargs -r ps -o comm= -p | sort -u | paste -sd, -)
+	notify "" "Camera is in use" \
+		"Close the app using it (${users:-unknown}), then switch again." >/dev/null
+	exit 1
+fi
+
+[ "$want" = rear ] && input=1 || input=0
+if ! v4l2-ctl -d "$DEV" -i "$input" >/dev/null 2>&1; then
+	notify "" "Could not switch camera" "Selecting the $want camera failed." >/dev/null
+	exit 1
+fi
+
+nid=$(notify "" "Switching to the $want camera…")
+
+# Make PipeWire pick up the new sizes. The new WirePlumber can race the old
+# one for the device ("busy"), so retry until the camera node is back.
+for _try in 1 2 3; do
+	systemctl --user restart wireplumber
+	for _ in 1 2 3 4 5 6 7 8 9 10; do
+		sleep 1
+		if wpctl status 2>/dev/null | grep -q 'ATOM ISP (V4L2)'; then
+			notify "$nid" "Using the $want camera" \
+				"Apps now get the $want camera." >/dev/null
+			exit 0
+		fi
+	done
+done
+
+notify "$nid" "Camera switched, PipeWire not ready" \
+	"Try: systemctl --user restart wireplumber" >/dev/null
+exit 1
